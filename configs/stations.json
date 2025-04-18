@@ -1,0 +1,34 @@
+[
+    {
+        "city": "dallas",
+        "sation": 72258
+    },
+    {
+        "city": "houston",
+        "sation": 72244
+    },
+    {
+        "city": "miami",
+        "sation": 72202
+    },
+    {
+        "city": "nashville",
+        "sation": 72327
+    },
+    {
+        "city": "new york",
+        "sation": 74486
+    },
+    {
+        "city": "oklahoma city",
+        "sation": 72353
+    },
+    {
+        "city": "albuquerque",
+        "sation": 72365
+    },
+    {
+        "city": "chicago",
+        "sation": 72534
+    }
+]

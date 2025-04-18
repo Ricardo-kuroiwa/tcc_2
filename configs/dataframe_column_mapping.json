@@ -1,0 +1,54 @@
+{
+    "base_1": {
+        "date":"date",
+        "temperature_2m_max":"maximum_temperature",
+        "temperature_2m_min":"minimum_temperature",
+        "temperature_2m_mean":"average_temperature",
+        "rain_sum":"precipitation",
+        "showers_sum":"precipitation_esparsa",
+        "snowfall_sum":"snowfall",
+        "snow_depth":"snow_depth",
+        "wind_speed_10m_max":"wind_speed",  
+        "wind_gusts_10m_max":"wind_speed_gust",
+        "wind_direction_10m_dominant":"wind_direction",
+        "relative_humidity_2m":"relative_humidity",
+        "pressure_msl":"sea_level_air_pressure",
+        "surface_pressure":"surface_air_pressure"
+    },
+    "base_2": {
+        "DATE": "date",
+        "NAME": "name_station",
+        "TMAX": "maximum_temperature",
+        "TMIN": "minimum_temperature",
+        "TAVG": "average_temperature",
+        "SNWD": "snow_depth",
+        "PRCP": "precipitation",
+        "AWND": "wind_speed",
+        "WDFG": "wind_direction",
+        "WSFG": "wind_gust", 
+        "PGTM": "peak_gust_time",
+        "SNOW": "snow"
+    },
+    "base_3": {
+        "time": "date",
+        "tavg": "average_temperature",
+        "tmin": "minimum_temperature",
+        "tmax": "maximum_temperature",
+        "temp": "temperature",
+        "dwpt": "dewpoint",
+        "rhum": "relative_humidity",
+        "prcp": "precipitation",
+        "snow": "snow_depth",
+        "wdir": "wind_direction",
+        "wspd": "wind_speed",
+        "wpgt": "wind_gust",
+        "pres": "sea_level_air_pressure",
+        "tsun": "total_sunshine_duration",
+        "coco": "code_weather"
+    },
+    "base_disaster": {
+        "CZ_NAME_STR": "location",
+        "BEGIN_DATE": "date",
+        "EVENT_TYPE": "eventType"
+    }
+}

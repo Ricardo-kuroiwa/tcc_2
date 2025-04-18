@@ -1,0 +1,10 @@
+# Ignorar arquivos de cache e temporários
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.swp
+
+# Ignorar diretório do ambiente virtual 
+env/
+venv/
