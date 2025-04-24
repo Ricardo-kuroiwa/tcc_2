@@ -226,6 +226,7 @@ class DataProcessor:
         print(f"Number of duplicates: {num_duplicates}")
         duplicates = df[df.duplicated(subset=['date'], keep=False)] # Mostra todas as duplicatas
         print(duplicates)
+        df = df.drop_duplicates(subset=['date','eventType'], keep='first')  # Remove duplicatas, mantendo a primeira ocorrência
         self.count_null_values(df)
         print("\n")
         return df
