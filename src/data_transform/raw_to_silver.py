@@ -101,7 +101,7 @@ class DataProcessor:
         duplicates = df[df.duplicated(subset=['date'], keep=False)] 
         print(duplicates)
         self.count_null_values(df)
-        print("\n")
+        
         return df
     
     
@@ -155,6 +155,14 @@ class DataProcessor:
         duplicates = df[df.duplicated(subset=['date'], keep=False)] 
         print(duplicates)
         self.count_null_values(df)
+        percentual_nulo = self.count_null_values(df)
+        cols_to_interpolate = percentual_nulo [(percentual_nulo  <= 20) & (percentual_nulo>0)].index
+        print(f"Columns to interpolate: {cols_to_interpolate}")
+        for col in cols_to_interpolate:
+            df[col] = df[col].interpolate()
+        print("After interpolation:")
+        percentual_nulo = self.count_null_values(df)
+        print("\n")
         print("\n")
         return df
     
