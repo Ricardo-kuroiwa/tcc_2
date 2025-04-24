@@ -19,6 +19,14 @@ class SilverToGold:
         # Implementar o tratamento genérico
         return None
     def process_base_1(self,files_path,file_disaster ,subpasta):
+        '''
+        Processing function for base_1 subfolder.
+        This function processes the data files found in the specified subfolder and merges them with disaster data.
+        Args:
+            files_path (list): List of file paths to be processed.
+            file_disaster (str):  Disaster file name.
+            subpasta (str): Subfolder name.
+        '''
         for file in files_path:
             if 'daily' in file:
                 print(f'    📄 Arquivo diário encontrado: {file}')
@@ -29,23 +37,59 @@ class SilverToGold:
         print(f'    📄 Arquivo desastre encontrado: {file_disaster}')
         df_disaster = utils.read_data_from_parquet(os.path.join(self.silver_path_disaster, file_disaster))
         df_disaster = df_disaster.drop(columns=['location'])
+        df_daily['season'] = df_daily['date'].apply(utils.get_season)
 
         medias_por_dia = df_hourly.groupby('date').mean(numeric_only=True).reset_index()
 
-        # Merge entre diário e médias horárias
         base_completa = pd.merge(df_daily, medias_por_dia, on='date', how='left')
 
-        # Merge final com desastres
         base_final = pd.merge(base_completa, df_disaster, on='date', how='outer')
+        base_final['disaster_occurred']= base_final['eventType'].apply(lambda x:  0 if pd.isna(x) else 1)
         print(f'Top 10 rows of base_final:')
         print(base_final.head(10))
-        duplicatas = base_final['date'].duplicated().sum()
+        return base_final
+    
+    def process_base_3(self,files_path,file_disaster ,subpasta):
+        for file in files_path:
+            if 'daily' in file:
+                print(f'    📄 Arquivo diário encontrado: {file}')
+                df_daily = utils.read_data_from_parquet(os.path.join(self.silver_path,subpasta, file))
+            else : 
+                print(f'    📄 Arquivo horário encontrado: {file}'  )
+                df_hourly = utils.read_data_from_parquet(os.path.join(self.silver_path,subpasta, file))
+        print(f'    📄 Arquivo desastre encontrado: {file_disaster}')
+        df_disaster = utils.read_data_from_parquet(os.path.join(self.silver_path_disaster, file_disaster))
+        df_disaster = df_disaster.drop(columns=['location'])
+        medias_por_dia = df_hourly.groupby('date').mean(numeric_only=True).reset_index()
+        medias_por_dia = medias_por_dia[['date','dewpoint','relative_humidity','wind_direction','wind_speed','precipitation']]
+        df_merged = pd.merge(df_daily, medias_por_dia, on=['precipitation', 'wind_direction', 'wind_speed'], how='left', suffixes=('_df1', '_df2'))
+        df_daily['precipitation'] = df_daily['precipitation'].fillna(df_merged['precipitation'])
+        df_daily['wind_direction'] = df_daily['wind_direction'].fillna(df_merged['wind_direction'])
+        df_daily['wind_speed'] = df_daily['wind_speed'].fillna(df_merged['wind_speed'])
+        df_daily =df_daily.drop(columns=['total_sunshine_duration','wind_gust'])
+        medias_por_dia = medias_por_dia.drop(columns=['wind_direction','precipitation','wind_speed'])
+        print(df_daily.columns)
+        
 
-        print(f'duplicatas : {duplicatas}')
-        duplicadas = base_final[base_final['date'].duplicated()]
-        print('linhas duplicadas :')
-        print(duplicadas)
+
+
+        base_completa = pd.merge(df_daily, medias_por_dia, on='date', how='left')
+        percentual_nulo = utils.count_null_values(base_completa)
+        cols_to_interpolate = percentual_nulo [(percentual_nulo  <= 40) & (percentual_nulo>0)].index
+        print(f"Columns to interpolate: {cols_to_interpolate}")
+        for col in cols_to_interpolate:
+            base_completa[col] = base_completa[col].interpolate()
+        print("After interpolation:")
+        
+        print(utils.count_null_values(base_completa))
+        '''
+        base_final = pd.merge(base_completa, df_disaster, on='date', how='outer')
+        base_final['disaster_occurred']= base_final['eventType'].apply(lambda x:  0 if pd.isna(x) else 1)
+        #print(f'Top 10 rows of base_final:')
+        #print(base_final.head(10))'''
+        
         pass
+
     def get_processor(self, subpasta):
         """
         Maps subfolders to processing functions.
@@ -56,8 +100,8 @@ class SilverToGold:
         - the processing funcition corresponding to the subfolder.
         """
         processors = {
-            #'base_disaster': self.process_base_disaster,
-            'base_1':self.process_base_1, # concluido
+            #'base_1':self.process_base_1, # concluido
+            #'base_3':self.process_base_3 # concluido
 
         }
         print(f"Processor for subfolder {subpasta}: {processors.get(subpasta, self.process_generic).__name__}")

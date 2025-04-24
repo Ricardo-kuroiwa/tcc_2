@@ -1,1 +1,2 @@
-base _2 : oklahoma city,new york, dallas , chicago , albuquerque
+base_2 : oklahoma city,new york, dallas , chicago , albuquerque
+base_3 : albuquerque,chicago,miami,nashville , new york
