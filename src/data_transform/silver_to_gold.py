@@ -14,10 +14,12 @@ class SilverToGold:
         files_in_path =os.listdir(self.silver_path_disaster)
         path_file_disaster =[file for file in files_in_path if city_name in file]
         return path_file_disaster[0] if path_file_disaster else None
+    
     def process_generic(self,files_path,file_disaster ,subpasta):
         print("Processando dados genéricos...")
         # Implementar o tratamento genérico
         return None
+    
     def process_base_1(self,files_path,file_disaster ,subpasta):
         '''
         Processing function for base_1 subfolder.
@@ -49,6 +51,29 @@ class SilverToGold:
         print(base_final.head(10))
         return base_final
     
+    def process_base_2(self,files_path,file_disaster ,subpasta):
+        '''
+        Processing function for base_1 subfolder.
+        This function processes the data files found in the specified subfolder and merges them with disaster data.
+        Args:
+            files_path (list): List of file paths to be processed.
+            file_disaster (str):  Disaster file name.
+            subpasta (str): Subfolder name.
+        '''
+        for file in files_path:
+            print(f'    📄 Arquivo diário encontrado: {file}')
+            data = utils.read_data_from_parquet(os.path.join(self.silver_path,subpasta, file))
+        print(f'    📄 Arquivo desastre encontrado: {file_disaster}')
+        df_disaster = utils.read_data_from_parquet(os.path.join(self.silver_path_disaster, file_disaster))
+        df_disaster = df_disaster.drop(columns=['location'])
+        data['season'] = data['date'].apply(utils.get_season)
+        base_final = pd.merge(data, df_disaster, on='date', how='outer')
+        base_final['disaster_occurred']= base_final['eventType'].apply(lambda x:  0 if pd.isna(x) else 1)
+        #print(f'Top 10 rows of base_final:')
+        #print(base_final.head(10))
+
+        return base_final
+
     def process_base_3(self,files_path,file_disaster ,subpasta):
         for file in files_path:
             if 'daily' in file:
@@ -68,27 +93,23 @@ class SilverToGold:
         df_daily['wind_speed'] = df_daily['wind_speed'].fillna(df_merged['wind_speed'])
         df_daily =df_daily.drop(columns=['total_sunshine_duration','wind_gust'])
         medias_por_dia = medias_por_dia.drop(columns=['wind_direction','precipitation','wind_speed'])
-        print(df_daily.columns)
-        
-
-
-
+        #print(df_daily.columns)
         base_completa = pd.merge(df_daily, medias_por_dia, on='date', how='left')
         percentual_nulo = utils.count_null_values(base_completa)
         cols_to_interpolate = percentual_nulo [(percentual_nulo  <= 40) & (percentual_nulo>0)].index
-        print(f"Columns to interpolate: {cols_to_interpolate}")
+        #print(f"Columns to interpolate: {cols_to_interpolate}")
         for col in cols_to_interpolate:
             base_completa[col] = base_completa[col].interpolate()
-        print("After interpolation:")
+        #print("After interpolation:")
         
-        print(utils.count_null_values(base_completa))
-        '''
+        #print(utils.count_null_values(base_completa))
+        
         base_final = pd.merge(base_completa, df_disaster, on='date', how='outer')
         base_final['disaster_occurred']= base_final['eventType'].apply(lambda x:  0 if pd.isna(x) else 1)
         #print(f'Top 10 rows of base_final:')
-        #print(base_final.head(10))'''
+        #print(base_final.head(10))
         
-        pass
+        return base_completa
 
     def get_processor(self, subpasta):
         """
@@ -100,14 +121,14 @@ class SilverToGold:
         - the processing funcition corresponding to the subfolder.
         """
         processors = {
-            #'base_1':self.process_base_1, # concluido
-            #'base_3':self.process_base_3 # concluido
+            'base_1':self.process_base_1, # concluido
+            'base_2':self.process_base_2, # concluido
+            'base_3':self.process_base_3 # concluido
 
         }
         print(f"Processor for subfolder {subpasta}: {processors.get(subpasta, self.process_generic).__name__}")
         return processors.get(subpasta, self.process_generic)  # Função genérica por padrão
 
-    
     def process_subfolders(self):
             list_cities = [
                 'dallas', 'houston', 'miami', 'nashville',
@@ -135,7 +156,10 @@ class SilverToGold:
                         print(f'    📄 Arquivos encontrados : {files}')
                         print(f'    📄 Arquivo desastre : {file_disaster}\n')
                         processor= self.get_processor(subpasta)
-                        processor(files ,file_disaster,subpasta)
+                        processed_data= processor(files ,file_disaster,subpasta)
+                        file_path_to_save = f'{self.gold_path}/{subpasta}/{city}_1973_2024.parquet'
+                        print(f'    📁 Salvando arquivo em: {file_path_to_save}')
+                        utils.save_data_to_parquet(processed_data, file_path_to_save)
                 else:
                     print(f'🚫 {subpasta_path} não é uma pasta válida (ou é base_disaster).')
 if __name__ == '__main__':        

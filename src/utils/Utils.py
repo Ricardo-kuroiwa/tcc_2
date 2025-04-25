@@ -3,6 +3,20 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 import abc
+def count_null_values(dataframe: pd.DataFrame) -> pd.Series:    
+        """
+        Prints the percentage of null values in each column of DataFrame.
+        Parameters:
+
+        - df: DataFrame to be analyzed.
+        """
+        percentual_nulos =( dataframe.isnull().sum() / len(dataframe)) * 100
+        percentual_nulos = percentual_nulos.round(2).sort_values(ascending=False)
+        #print("Null value percentages:")
+        # Exibir os resultados
+        #print(percentual_nulos)
+        return percentual_nulos
+
 def get_season(date: pd.Timestamp) -> str:
     """
     Deterninate the season based on the month of the date.for northern hemisphere.
@@ -68,6 +82,9 @@ def save_data_to_parquet(df: pd.DataFrame, file_path: str)-> None:
         df (pd.DataFrame): DataFrame to save.
         file_path (str): Path to save the parquet file.
     """
+    dir_path = os.path.dirname(file_path)
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
     try:
         df.to_parquet(file_path, index=False)
     except Exception as e:
