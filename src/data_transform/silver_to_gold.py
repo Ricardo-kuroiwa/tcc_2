@@ -49,6 +49,7 @@ class SilverToGold:
         base_final['disaster_occurred']= base_final['eventType'].apply(lambda x:  0 if pd.isna(x) else 1)
         print(f'Top 10 rows of base_final:')
         print(base_final.head(10))
+        print(utils.count_null_values(base_final))
         return base_final
     
     def process_base_2(self,files_path,file_disaster ,subpasta):
@@ -105,11 +106,12 @@ class SilverToGold:
         #print(utils.count_null_values(base_completa))
         
         base_final = pd.merge(base_completa, df_disaster, on='date', how='outer')
+        base_final['season'] =base_final['date'].apply(utils.get_season)
         base_final['disaster_occurred']= base_final['eventType'].apply(lambda x:  0 if pd.isna(x) else 1)
         #print(f'Top 10 rows of base_final:')
         #print(base_final.head(10))
         
-        return base_completa
+        return base_final
 
     def get_processor(self, subpasta):
         """
