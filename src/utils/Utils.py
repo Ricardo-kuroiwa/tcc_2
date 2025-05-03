@@ -3,6 +3,17 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 import abc
+
+def extract_date_components(df: pd.DataFrame, date_column: str) -> pd.DataFrame:
+    if date_column not in df.columns:
+        raise ValueError(f"Column '{date_column}' not found in DataFrame.")
+    df[date_column] = pd.to_datetime(df[date_column])
+    df['year'] = df[date_column].dt.year
+    df['month'] = df[date_column].dt.month
+    df['day'] = df[date_column].dt.day
+
+    return df
+
 def count_null_values(dataframe: pd.DataFrame) -> pd.Series:    
         """
         Prints the percentage of null values in each column of DataFrame.
@@ -75,7 +86,7 @@ def read_data_from_parquet( file_path: str)-> pd.DataFrame:
     except Exception as e:
         print(f"Erro ao ler o arquivo {file_path}: {e}")
         return None
-    
+
 def save_data_to_parquet(df: pd.DataFrame, file_path: str)-> None:
     """Save data to a parquet file.
     Args:

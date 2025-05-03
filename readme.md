@@ -17,6 +17,13 @@ Este projeto coleta dados climáticos e de desastres naturais de diversas fontes
 - Albuquerque, NM
 - Chicago, IL
 
+### Modelos escolhidos
+- Decision Tree
+- XGBoost
+- LightGBM
+
+### Feature Selection
+- SelectKBest
 
 ## Instruções para Execução
 
