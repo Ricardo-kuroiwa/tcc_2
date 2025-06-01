@@ -24,6 +24,8 @@ Este projeto coleta dados climáticos e de desastres naturais de diversas fontes
 
 ### Feature Selection
 - SelectKBest
+- RFE
+- SelectFromModel
 
 ## Instruções para Execução
 
