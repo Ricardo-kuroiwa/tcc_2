@@ -1,43 +1,86 @@
 import src.train.decision_tree as decision_tree
 import src.train.lightgbm_model as lightgbm_model
 import src.train.xgboost_model as xgboost_model
+import src.train.fase_2.decision_tree as decision_tree2
+import src.train.fase_2.xgboost as xgboost_model2
+import src.train.fase_2.lightgbm as lightgbm_model2
 import src.utils.Utils as utils  
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
+import itertools
 import pandas as pd
 import os 
 
-# Listas de cidades para cada base
+# List of cities for each base
 cities_base_1 = ['albuquerque', 'miami', 'chicago']
 cities_base_2 = ['albuquerque', 'dallas', 'oklahoma city']
 cities_base_3 = ['albuquerque', 'nashville', 'chicago']
 
-# Dicionários para armazenar os DataFrames de cada base
+# Dictionaries to hold DataFrames for each base
 dataframe_base_1 = {}
 dataframe_base_2 = {}
 dataframe_base_3 = {}
 
-# Dicionário que mapeia as bases para as listas de cidades
+# Dictionary to map bases to their respective cities
 base_to_cities = {
     'base_1': cities_base_1,
     'base_2': cities_base_2,
     'base_3': cities_base_3,
 }
 Balancing_Methods = [None,'SMOTE', 'ADASYN', 'RandomUnderSampler', 'SMOTEENN']
+Feature_Selection_Methods = [None,'SelectKBest', 'RFE', 'SelectFromModel']
+Order_feature_selection = [None,'before', 'after']
+#Feature_Selection_Methods = [None]
+#Order_feature_selection = [None]
+combinations = list(itertools.product(
+    Balancing_Methods,
+    Feature_Selection_Methods, 
+    Order_feature_selection))
+
 def train_model(df,city,base):
     X_train, X_test, y_train, y_test = train_test_split(df.drop(columns=['disaster_occurred']), df['disaster_occurred'], test_size=0.3, random_state=42,stratify=df['disaster_occurred'])
     #print(f"X_train: {X_train.shape}, y_train: {y_train.shape}, X_test: {X_test.shape}, y_test: {y_test.shape}")
     print(f"base: {base}, city: {city}, column_target: {y_test.name}")
-    '''
-    decision_tree.train_decision_tree(X_train, y_train, X_test, y_test,y_test.name,base,city)
-    lightgbm_model.train_lightgbm(X_train, y_train, X_test, y_test, y_test.name,base,city)
-    xgboost_model.train_xgboost(X_train, y_train, X_test, y_test, y_test.name,base,city)'''
-    for method in Balancing_Methods:
-        decision_tree.train_decision_tree(X_train, y_train, X_test, y_test,y_test.name,base,city,method)
-        lightgbm_model.train_lightgbm(X_train, y_train, X_test, y_test, y_test.name,base,city,method)
-        xgboost_model.train_xgboost(X_train, y_train, X_test, y_test, y_test.name,base,city,method)
+    for balancing_method, feature_selection_method, order_feature_selection in combinations:
+        if base in ['base_2']:
+            lightgbm_model2.train_lightgbm(
+            X_train, y_train, X_test, y_test, y_test.name,
+            base,city,balancing_method,feature_selection_method,
+            order_feature_selection,n_trials=30,fase=2)
+            
+        
+        #print(f"Trained Decision Tree for {city} in {base} with balancing method: {balancing_method}, feature selection method: {feature_selection_method}, order: {order_feature_selection}")
+        '''
+        decision_tree2.train_decision_tree(
+            X_train, y_train, X_test, y_test,y_test.name,
+            base,city,balancing_method,feature_selection_method,
+            order_feature_selection,n_trials=30,fase=2)
+            lightgbm_model2.train_lightgbm(
+            X_train, y_train, X_test, y_test, y_test.name,
+            base,city,balancing_method,feature_selection_method,
+            order_feature_selection,n_trials=30,fase=2)
+        decision_tree.train_decision_tree(
+            X_train, y_train, X_test, y_test,y_test.name,
+            base,city,balancing_method,feature_selection_method,
+            order_feature_selection,n_trials=200)
+        lightgbm_model.train_lightgbm( 
+            X_train, y_train, X_test, y_test, y_test.name,
+            base,city,balancing_method,feature_selection_method,
+            order_feature_selection,n_trials=200)
+        xgboost_model.train_xgboost(
+            X_train, y_train, X_test, y_test, y_test.name,
+            base,city,balancing_method,feature_selection_method,
+            order_feature_selection,n_trials=200)'''
     print("Success in training models")
+    '''
+    for method in Balancing_Methods:
+        for feature_selection_method in Feature_Selection_Methods:
+            for order in order_feature_selection:
+                decision_tree.train_decision_tree(X_train, y_train, X_test, y_test,y_test.name,base,city,method,feature_selection_method, order)'''
+        #lightgbm_model.train_lightgbm(X_train, y_train, X_test, y_test, y_test.name,base,city,method)
+        #xgboost_model.train_xgboost(X_train, y_train, X_test, y_test, y_test.name,base,city,method)
+    
 
 def load_data_for_base(file_path, city, base, dataframe_dict):
     """Função que carrega o DataFrame para a base correspondente."""
@@ -89,13 +132,13 @@ if __name__ == "__main__":
                     pass
 
         print("-----/-----/"*10)
-
+    '''
     print(f"DataFrames para a base 1: {len(dataframe_base_1)}")
     print(f"DataFrames para a base 2: {len(dataframe_base_2)}")
     print(f"DataFrames para a base 3: {len(dataframe_base_3)}")
     print(f'Chaves em dataframe_base_1: {list(dataframe_base_1.keys())}')
     print(f'Chaves em dataframe_base_2: {list(dataframe_base_2.keys())}')
-    print(f'Chaves em dataframe_base_3: {list(dataframe_base_3.keys())}')
+    print(f'Chaves em dataframe_base_3: {list(dataframe_base_3.keys())}')'''
     list_dataframes = [dataframe_base_1, dataframe_base_2, dataframe_base_3]
     
     for base_name, dataframe_dict in zip(['base_1', 'base_2', 'base_3'], list_dataframes):

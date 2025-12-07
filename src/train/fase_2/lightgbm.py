@@ -21,10 +21,10 @@ from sklearn.metrics import (
 from imblearn.over_sampling import SMOTE, ADASYN
 from imblearn.under_sampling import RandomUnderSampler
 from imblearn.combine import SMOTEENN
-
+from sklearn.feature_selection import SelectKBest, RFE, SelectFromModel
+from sklearn.feature_selection import f_classif, mutual_info_classif
+from sklearn.ensemble import RandomForestClassifier
 import src.utils.Utils as utils
-from src.utils.balancing_conf import balancing_methods,balancing_creators
-from src.utils.feature_selection_conf import feature_selection_methods,feature_selection_creators
 
 def get_input_example(X_train):
     import pandas as pd
@@ -32,12 +32,33 @@ def get_input_example(X_train):
         return X_train.head(1)
     else:
         return X_train[0:1]
-def train_lightgbm(X_train, y_train, X_test, y_test, collumn_target, base, city, balancing_method=None,feature_selection_method=None, feature_selection_order='after',n_trials=50):
-
+def train_lightgbm(X_train, y_train, X_test, y_test, collumn_target, base, city, balancing_method=None,feature_selection_method=None, feature_selection_order='after',n_trials=50, fase=2):
+    max_features = X_train.shape[1]
+    feature_selection_methods = {
+                'SelectKBest': SelectKBest(score_func=f_classif, k=int(max_features * 0.5)),
+                'RFE': RFE(estimator=RandomForestClassifier(n_estimators=50,   
+                    max_depth=10,       
+                    random_state=42,
+                    n_jobs=-1)),
+                'SelectFromModel': SelectFromModel(estimator=RandomForestClassifier(n_estimators=50))
+            }
+    balancing_methods = {
+                    'SMOTE': SMOTE(
+                        random_state=42,
+                    ),
+                    'ADASYN': ADASYN(
+                        random_state=42,
+                    ),
+                    'RandomUnderSampler': RandomUnderSampler(
+                        random_state=42,
+                    ),
+                    'SMOTEENN': SMOTEENN(
+                        n_jobs=-1
+                    )
+                }
     try:
 
         def objective(trial):
-            max_features = X_train.shape[1]
             params = {
                 'num_leaves': trial.suggest_int('num_leaves', 20, 100),
                 'max_depth': trial.suggest_int('max_depth', -1, 15),
@@ -53,25 +74,25 @@ def train_lightgbm(X_train, y_train, X_test, y_test, collumn_target, base, city,
             if feature_selection_method is not None and balancing_method is not None:
                 if feature_selection_order == 'before':
                     # First apply feature selection, then balancing
-                    feature_selector = feature_selection_methods[feature_selection_method](trial,max_features)
+                    feature_selector = feature_selection_methods[feature_selection_method]
                     X_train_copy = feature_selector.fit_transform(X_train_copy, y_train_copy)
                     X_test_copy = feature_selector.transform(X_test_copy)
-                    balanceador = balancing_methods[balancing_method](trial)
+                    balanceador = balancing_methods[balancing_method]
                     X_train_copy, y_train_copy = balanceador.fit_resample(X_train_copy, y_train_copy)
                 else:
                     # First apply balancing, then feature selection
-                    balanceador = balancing_methods[balancing_method](trial)
+                    balanceador = balancing_methods[balancing_method]
                     X_train_copy, y_train_copy = balanceador.fit_resample(X_train_copy, y_train_copy)
-                    feature_selector = feature_selection_methods[feature_selection_method](trial,max_features)
+                    feature_selector = feature_selection_methods[feature_selection_method]
                     X_train_copy = feature_selector.fit_transform(X_train_copy, y_train_copy)
                     X_test_copy = feature_selector.transform(X_test_copy)
             # If only balancing method or feature selection method is specified
             else:
                 if balancing_method is not None:
-                    balanceador = balancing_methods[balancing_method](trial)
+                    balanceador = balancing_methods[balancing_method]
                     X_train_copy, y_train_copy = balanceador.fit_resample(X_train_copy, y_train_copy)
                 if feature_selection_method is not None:
-                    feature_selector = feature_selection_methods[feature_selection_method](trial,max_features)
+                    feature_selector = feature_selection_methods[feature_selection_method]
                     X_train_copy = feature_selector.fit_transform(X_train_copy, y_train_copy)
                     X_test_copy = feature_selector.transform(X_test_copy)
 
@@ -81,7 +102,7 @@ def train_lightgbm(X_train, y_train, X_test, y_test, collumn_target, base, city,
             preds = model.predict(X_test)
             return recall_score(y_test, preds)
 
-        experiment_name = f"DataBase_{base}"
+        experiment_name = f"DataBase_{base}_fase_{fase}"
         mlflow.set_experiment(experiment_name)
         start_time = time.time()
 
@@ -101,36 +122,30 @@ def train_lightgbm(X_train, y_train, X_test, y_test, collumn_target, base, city,
             balancer_params = {}
             feature_params = {}
             balancing_method = balancing_method if balancing_method else None
-            for k, v in best_params.items():
-                if k not in lightgbm_params:
-                    if balancing_method and k in utils.get_balancing_param_names(balancing_method):
-                        balancer_params[k] = v
-                    elif feature_selection_method and k in utils.get_feature_selection_param_names(feature_selection_method):
-                        feature_params[k] = v
 
             if feature_selection_method is not None and balancing_method is not None:
                 if feature_selection_order == 'before':
                     # First apply feature selection, then balancing
-                    feature_selector = feature_selection_creators[feature_selection_method](**feature_params)
+                    feature_selector = feature_selection_methods[feature_selection_method]
                     X_train = feature_selector.fit_transform(X_train, y_train)
                     X_test = feature_selector.transform(X_test)
-                    balancer = balancing_creators[balancing_method](**balancer_params)
+                    balancer = balancing_methods[balancing_method]
                     X_train, y_train = balancer.fit_resample(X_train, y_train)
                 else:
                     # First apply balancing, then feature selection
-                    balancer = balancing_creators[balancing_method](**balancer_params)
+                    balancer = balancing_methods[balancing_method]
                     X_train, y_train = balancer.fit_resample(X_train, y_train)
-                    feature_selector = feature_selection_creators[feature_selection_method](**feature_params)
+                    feature_selector = feature_selection_methods[feature_selection_method]
                     X_train = feature_selector.fit_transform(X_train, y_train)
                     X_test = feature_selector.transform(X_test)
             else:
                 # If only balancing method or feature selection method is specified
                 if feature_selection_method is not None:
-                    feature_selector = feature_selection_creators[feature_selection_method](**feature_params)
+                    feature_selector = feature_selection_methods[feature_selection_method]
                     X_train = feature_selector.fit_transform(X_train, y_train)
                     X_test = feature_selector.transform(X_test)
                 if balancing_method is not None:
-                    balancer = balancing_creators[balancing_method](**balancer_params)
+                    balancer = balancing_methods[balancing_method]
                     X_train, y_train = balancer.fit_resample(X_train, y_train)
 
             best_model = lgb.LGBMClassifier(**best_params, random_state=42)
@@ -184,7 +199,7 @@ def train_lightgbm(X_train, y_train, X_test, y_test, collumn_target, base, city,
                 plt.savefig(cm_path)
                 mlflow.log_artifact(cm_path, artifact_path="plots")
                 plt.close()
-
+  
                 # Optimization history plot
                 fig_hist = optuna_viz.plot_optimization_history(study)
                 fig_hist.figure.set_size_inches(8, 5)

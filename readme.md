@@ -31,10 +31,10 @@ Este projeto coleta dados climáticos e de desastres naturais de diversas fontes
 
 ### 1 . Criar ambiente virtual
 Abra o terminal e execute o seguinte comando:
-py -m venv venv
+py -m venv env
 ### 2 . Iniciar ambiente virtual
 Execute o seguinte comando no terminal
-venv\Scripts\activate
+env\Scripts\activate
 ### 3 . Instalar as dependencias  
 pip install -r requirements.txt
 ### 4 . Rodar o projeto

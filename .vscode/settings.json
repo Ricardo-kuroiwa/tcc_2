@@ -9,6 +9,7 @@
         "__pycache__/":true,
         "env/": true,
         ".cache.sqlite":true,
+        ".pytest_cache/":true
     }
     ,
     

@@ -2,9 +2,11 @@ import time
 import os
 import tempfile
 import optuna
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
-
+import optuna.visualization.matplotlib as optuna_viz
 import mlflow 
 import xgboost as xgb
 from sklearn.metrics import (
@@ -15,11 +17,12 @@ precision_score,
 recall_score,
 f1_score
 )
-from imblearn.over_sampling import SMOTE, ADASYN
-from imblearn.under_sampling import RandomUnderSampler
-from imblearn.combine import SMOTEENN
 
 
+
+import src.utils.Utils as utils
+from src.utils.balancing_conf import balancing_methods,balancing_creators
+from src.utils.feature_selection_conf import feature_selection_methods,feature_selection_creators
 
 from dotenv import load_dotenv
 """
@@ -29,46 +32,119 @@ Balanced Methods:
 - RandomUnderSampler
 - SMOTEENN
 """
+
 load_dotenv()
 mlflow_tracking_uri = os.getenv('MLFLOW_TRACKING_URI')
-def train_xgboost(X_train, y_train, X_test, y_test,collumn_target,base,city, balancing_method=None):
-    metodos_balanceamento = {
-        'SMOTE': SMOTE(random_state=42),
-        'ADASYN': ADASYN(random_state=42),
-        'RandomUnderSampler': RandomUnderSampler(random_state=42),
-        'SMOTEENN': SMOTEENN(random_state=42)
-    }
+def get_input_example(X_train):
+    import pandas as pd
+    if isinstance(X_train, pd.DataFrame):
+        return X_train.head(1)
+    else:
+        return X_train[0:1]
+def train_xgboost(X_train, y_train, X_test, y_test,collumn_target,base,city, balancing_method=None,feature_selection_method=None, feature_selection_order='after',n_trials=50,fase=1):
+   
     try:
-        if balancing_method  in metodos_balanceamento:
-            X_train, y_train = metodos_balanceamento[balancing_method].fit_resample(X_train, y_train)
-
         
         def objective(trial):
+            max_features = X_train.shape[1]
             params = {
                 'n_estimators': trial.suggest_categorical('n_estimators', [100, 200, 300]),
                 'max_depth': trial.suggest_int('max_depth', 3, 10),
                 'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3),
                 'subsample': trial.suggest_float('subsample', 0.3, 1.0),
                 'colsample_bytree': trial.suggest_float('colsample_bytree', 0.5, 1.0),
-                'use_label_encoder': False,
                 'eval_metric': 'logloss'
             }
+            X_train_copy, y_train_copy ,X_test_copy= X_train.copy(), y_train.copy(),X_test.copy()
+            balanceador  = None
+            feature_selector = None
+            # Apply feature selection and balancing methods if specified
+            if feature_selection_method is not None and balancing_method is not None:
+                if feature_selection_order == 'before':
+                    # First apply feature selection, then balancing
+                    feature_selector = feature_selection_methods[feature_selection_method](trial,max_features)
+                    X_train_copy = feature_selector.fit_transform(X_train_copy, y_train_copy)
+                    X_test_copy = feature_selector.transform(X_test_copy)
+                    balanceador = balancing_methods[balancing_method](trial)
+                    X_train_copy, y_train_copy = balanceador.fit_resample(X_train_copy, y_train_copy)
+                else:
+                    # First apply balancing, then feature selection
+                    balanceador = balancing_methods[balancing_method](trial)
+                    X_train_copy, y_train_copy = balanceador.fit_resample(X_train_copy, y_train_copy)
+                    feature_selector = feature_selection_methods[feature_selection_method](trial,max_features)
+                    X_train_copy = feature_selector.fit_transform(X_train_copy, y_train_copy)
+                    X_test_copy = feature_selector.transform(X_test_copy)
+            # If only balancing method or feature selection method is specified
+            else:
+                if balancing_method is not None:
+                    balanceador = balancing_methods[balancing_method](trial)
+                    X_train_copy, y_train_copy = balanceador.fit_resample(X_train_copy, y_train_copy)
+                if feature_selection_method is not None:
+                    feature_selector = feature_selection_methods[feature_selection_method](trial,max_features)
+                    X_train_copy = feature_selector.fit_transform(X_train_copy, y_train_copy)
+                    X_test_copy = feature_selector.transform(X_test_copy)
+
 
             model = xgb.XGBClassifier(**params, random_state=42)
-            model.fit(X_train, y_train)
-            preds = model.predict(X_test)
+            model.fit(X_train_copy, y_train_copy)
+            preds = model.predict(X_test_copy)
             return recall_score(y_test, preds)
-        experiment_name = f"DataBase_{base}"
+        experiment_name = f"DataBase_{base}_fase_{fase}"
         mlflow.set_experiment(experiment_name)
         start_time = time.time()
         with mlflow.start_run(run_name=f"XGBoost Classifier Optuna - {city}"):
             study = optuna.create_study(direction='maximize')
-            study.optimize(objective, n_trials=50)
+            study.optimize(objective, n_trials=n_trials)
 
             # Melhor modelo
             best_params = study.best_params
-            best_model = xgb.XGBClassifier(**best_params, use_label_encoder=False, eval_metric='logloss', random_state=42)
+            xboost_best_params = {k: v for k, v in study.best_params.items() if k in [
+                'n_estimators',
+                'max_depth',
+                'learning_rate',
+                'subsample',
+                'colsample_bytree',
+            ]}
+            balancer_params = {}
+            feature_params = {}
+            balancing_method = balancing_method if balancing_method else None
+            for k, v in best_params.items():
+                if k not in xboost_best_params:
+                    if balancing_method and k in utils.get_balancing_param_names(balancing_method):
+                        balancer_params[k] = v
+                    elif feature_selection_method and k in utils.get_feature_selection_param_names(feature_selection_method):
+                        feature_params[k] = v
+
+            if feature_selection_method is not None and balancing_method is not None:
+                if feature_selection_order == 'before':
+                    # First apply feature selection, then balancing
+                    feature_selector = feature_selection_creators[feature_selection_method](**feature_params)
+                    X_train = feature_selector.fit_transform(X_train, y_train)
+                    X_test = feature_selector.transform(X_test)
+                    balancer = balancing_creators[balancing_method](**balancer_params)
+                    X_train, y_train = balancer.fit_resample(X_train, y_train)
+                else:
+                    # First apply balancing, then feature selection
+                    balancer = balancing_creators[balancing_method](**balancer_params)
+                    X_train, y_train = balancer.fit_resample(X_train, y_train)
+                    feature_selector = feature_selection_creators[feature_selection_method](**feature_params)
+                    X_train = feature_selector.fit_transform(X_train, y_train)
+                    X_test = feature_selector.transform(X_test)
+            else:
+                # If only balancing method or feature selection method is specified
+                if feature_selection_method is not None:
+                    feature_selector = feature_selection_creators[feature_selection_method](**feature_params)
+                    X_train = feature_selector.fit_transform(X_train, y_train)
+                    X_test = feature_selector.transform(X_test)
+                if balancing_method is not None:
+                    balancer = balancing_creators[balancing_method](**balancer_params)
+                    X_train, y_train = balancer.fit_resample(X_train, y_train)
+
+            
+
+            best_model = xgb.XGBClassifier(**xboost_best_params, use_label_encoder=False, eval_metric='logloss', random_state=42)
             best_model.fit(X_train, y_train)
+
 
             # Previsões e métricas
             y_pred = best_model.predict(X_test)
@@ -77,20 +153,31 @@ def train_xgboost(X_train, y_train, X_test, y_test,collumn_target,base,city, bal
             recall = recall_score(y_test, y_pred)
             f1 = f1_score(y_test, y_pred)
 
-            # Log no MLflow
-            mlflow.log_param("balancing_method", balancing_method if balancing_method else "None")
-            mlflow.log_params(best_params)
+            # Log parameters and metrics 
             mlflow.log_param("collumn_target", collumn_target)
             mlflow.log_param("base", base)
             mlflow.log_param("city", city)
-            mlflow.log_metric("training_time", time.time() - start_time)
+
+            mlflow.log_param("balancing_method", balancing_method if balancing_method else "None")
+            mlflow.log_param("feature_selection_method", feature_selection_method if feature_selection_method else "None")
+            mlflow.log_param("feature_selection_order", feature_selection_order)
+            # log best parameters of model
+            mlflow.log_params(xboost_best_params)
+            if balancer_params:
+                mlflow.log_params(balancer_params)
+             # Log metrics
             mlflow.log_metric("precision", precision)
             mlflow.log_metric("recall", recall)
             mlflow.log_metric("f1_score", f1)
             mlflow.log_metric("auc_roc", auc_roc)
-
-            # Log do modelo
-            mlflow.sklearn.log_model(best_model, "xgboost_model")
+            mlflow.log_metric("training_time", time.time() - start_time)
+            
+             # Log model
+            mlflow.sklearn.log_model(
+                sk_model=best_model,
+                artifact_path="xboost_model",
+                input_example=get_input_example(X_train)
+            )
 
             # Matriz de confusão
             cm = confusion_matrix(y_test, y_pred)
@@ -102,10 +189,26 @@ def train_xgboost(X_train, y_train, X_test, y_test,collumn_target,base,city, bal
             plt.ylabel('Real')
             plt.title('Matriz de Confusão')
             with tempfile.TemporaryDirectory() as temp_dir:
-                timestamp = int(time.time())
-                cm_path = os.path.join(temp_dir, f"confusion_matrix_{timestamp}.png")
+                # Confusion matrix plot
+                cm_path = os.path.join(temp_dir, "confusion_matrix.png")
                 plt.savefig(cm_path)
                 mlflow.log_artifact(cm_path, artifact_path="plots")
+                plt.close()
+
+                # Optimization history plot
+                fig_hist = optuna_viz.plot_optimization_history(study)
+                fig_hist.figure.set_size_inches(8, 5)
+                hist_path = os.path.join(temp_dir, "optimization_history.png")
+                fig_hist.figure.savefig(hist_path, bbox_inches='tight')
+                mlflow.log_artifact(hist_path, artifact_path="plots")
+
+                # Hyperparameter importance plot
+                fig_importance = optuna_viz.plot_param_importances(study)
+                fig_importance.figure.set_size_inches(8, 5)
+                imp_path = os.path.join(temp_dir, "hyperparameter_importance.png")
+                fig_importance.figure.savefig(imp_path, bbox_inches='tight')
+                mlflow.log_artifact(imp_path, artifact_path="plots")
+
             plt.close()
 
     except Exception as e:

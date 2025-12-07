@@ -1,0 +1,43 @@
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  default:
+    format: "[%(asctime)s] [%(levelname)-8s] [%(name)s] %(message)s"
+    datefmt: "%Y-%m-%d %H:%M:%S"
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: DEBUG
+    formatter: default
+    stream: ext://sys.stdout
+
+  file_all:
+    class: logging.FileHandler
+    level: DEBUG
+    formatter: default
+    filename: logs/app.log
+    encoding: utf-8
+
+  file_errors:
+    class: logging.FileHandler
+    level: ERROR
+    formatter: default
+    filename: logs/errors.log
+    encoding: utf-8
+
+loggers:
+  train:
+    level: DEBUG
+    handlers: [console, file_all, file_errors]
+    propagate: no
+
+  tune:
+    level: DEBUG
+    handlers: [console, file_all, file_errors]
+    propagate: no
+
+root:
+  level: DEBUG
+  handlers: [console, file_all, file_errors]

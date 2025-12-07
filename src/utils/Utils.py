@@ -34,7 +34,7 @@ def get_season(date: pd.Timestamp) -> str:
     Args:
         date (datetime): Date to determine the season.
     Returns:
-            str: Season name.
+        str: Season name.
     """
     month = date.month
     if month in [12, 1, 2]:
@@ -100,3 +100,21 @@ def save_data_to_parquet(df: pd.DataFrame, file_path: str)-> None:
         df.to_parquet(file_path, index=False)
     except Exception as e:
         print(f"Erro ao salvar o arquivo {file_path}: {e}")
+def get_balancing_param_names(method):
+    """Returns names of parameters specific to each balancing method"""
+    param_map = {
+        'SMOTE': ['k_neighbors', 'sampling_strategy'],
+        'ADASYN': ['n_neighbors', 'sampling_strategy'],
+        'RandomUnderSampler': ['sampling_strategy'],
+        'SMOTEENN': ['smote_k_neighbors', 'enn_n_neighbors']
+    }
+    return param_map.get(method, [])
+
+def get_feature_selection_param_names(method):
+    """Returns parameter names specific to each feature selection method"""
+    param_map = {
+        'SelectKBest': ['score_func', 'k'],
+        'RFE': ['n_features_to_select'],
+        'SelectFromModel': ['threshold']
+    }
+    return param_map.get(method, [])
