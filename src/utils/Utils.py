@@ -1,32 +1,60 @@
+import abc
 import os
-import seaborn as sns
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import pandas as pd
-import abc
+import seaborn as sns
+import yaml
 
+
+# --- Configuração ---
+def load_config(config_path: str = "config.yaml") -> dict:
+    """
+    Carrega as configurações do projeto de um arquivo YAML.
+    """
+    path = Path(config_path)
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Arquivo de configuração não encontrado em: {path.absolute()}"
+        )
+
+    with open(path, "r", encoding="utf-8") as file:
+        return yaml.safe_load(file)
+
+
+# --- Manipulação de Dados ---
 def extract_date_components(df: pd.DataFrame, date_column: str) -> pd.DataFrame:
+    """
+    Extrai ano, mês e dia de uma coluna de data.
+    """
     if date_column not in df.columns:
-        raise ValueError(f"Column '{date_column}' not found in DataFrame.")
+        raise ValueError(f"A coluna '{date_column}' não foi encontrada no DataFrame.")
+
+    df = df.copy()
+
     df[date_column] = pd.to_datetime(df[date_column])
-    df['year'] = df[date_column].dt.year
-    df['month'] = df[date_column].dt.month
-    df['day'] = df[date_column].dt.day
+    df["year"] = df[date_column].dt.year
+    df["month"] = df[date_column].dt.month
+    df["day"] = df[date_column].dt.day
 
     return df
 
-def count_null_values(dataframe: pd.DataFrame) -> pd.Series:    
-        """
-        Prints the percentage of null values in each column of DataFrame.
-        Parameters:
 
-        - df: DataFrame to be analyzed.
-        """
-        percentual_nulos =( dataframe.isnull().sum() / len(dataframe)) * 100
-        percentual_nulos = percentual_nulos.round(2).sort_values(ascending=False)
-        #print("Null value percentages:")
-        # Exibir os resultados
-        #print(percentual_nulos)
-        return percentual_nulos
+def count_null_values(dataframe: pd.DataFrame) -> pd.Series:
+    """
+    Prints the percentage of null values in each column of DataFrame.
+    Parameters:
+
+    - df: DataFrame to be analyzed.
+    """
+    percentual_nulos = (dataframe.isnull().sum() / len(dataframe)) * 100
+    percentual_nulos = percentual_nulos.round(2).sort_values(ascending=False)
+    # print("Null value percentages:")
+    # Exibir os resultados
+    # print(percentual_nulos)
+    return percentual_nulos
+
 
 def get_season(date: pd.Timestamp) -> str:
     """
@@ -38,15 +66,16 @@ def get_season(date: pd.Timestamp) -> str:
     """
     month = date.month
     if month in [12, 1, 2]:
-        return 'Inverno'
+        return "Inverno"
     elif month in [3, 4, 5]:
-        return 'Primavera'
+        return "Primavera"
     elif month in [6, 7, 8]:
-        return 'Verão'
-    else:  
-        return 'Outono'
+        return "Verão"
+    else:
+        return "Outono"
 
-def add_moving_average(df, column: str, window: int = 3)-> pd.DataFrame: 
+
+def add_moving_average(df, column: str, window: int = 3) -> pd.DataFrame:
     """add moving average columns to the dataframe
     Args:
         df (pd.DataFrame): DataFrame to add moving average columns.
@@ -57,28 +86,32 @@ def add_moving_average(df, column: str, window: int = 3)-> pd.DataFrame:
     """
     if column not in df.columns:
         raise ValueError(f"Column '{column}' not found in DataFrame.")
-    df[f'{column}_moving_average_sma'] = df[column].rolling(window=window).mean()
-    df[f'{column}_moving_average_ema'] =  df[column].ewm(span=window, adjust=False).mean()
+    df[f"{column}_moving_average_sma"] = df[column].rolling(window=window).mean()
+    df[f"{column}_moving_average_ema"] = (
+        df[column].ewm(span=window, adjust=False).mean()
+    )
     return df
 
+
 def save_plot(folder: str, filename: str) -> None:
-    """"Save the plot to a specified folder and filename.
+    """ "Save the plot to a specified folder and filename.
     Args:
         folder (str): Folder name to save the plot.
         filename (str): Filename to save the plot.
-    """ 
-    path = os.path.join('figures', folder)
+    """
+    path = os.path.join("figures", folder)
     if not os.path.exists(path):
         os.makedirs(path)
-    plt.tight_layout() 
-    plt.savefig(os.path.join(path, filename), bbox_inches='tight')
+    plt.tight_layout()
+    plt.savefig(os.path.join(path, filename), bbox_inches="tight")
     plt.close()
 
-def read_data_from_parquet( file_path: str)-> pd.DataFrame:
-    """Read data from a parquet file.   
+
+def read_data_from_parquet(file_path: str) -> pd.DataFrame:
+    """Read data from a parquet file.
     Args:
         file_path (str): Path to the parquet file.
-    Returns:    
+    Returns:
         pd.DataFrame: DataFrame containing the data from the parquet file.
     """
     try:
@@ -87,7 +120,8 @@ def read_data_from_parquet( file_path: str)-> pd.DataFrame:
         print(f"Erro ao ler o arquivo {file_path}: {e}")
         return None
 
-def save_data_to_parquet(df: pd.DataFrame, file_path: str)-> None:
+
+def save_data_to_parquet(df: pd.DataFrame, file_path: str) -> None:
     """Save data to a parquet file.
     Args:
         df (pd.DataFrame): DataFrame to save.
@@ -100,21 +134,24 @@ def save_data_to_parquet(df: pd.DataFrame, file_path: str)-> None:
         df.to_parquet(file_path, index=False)
     except Exception as e:
         print(f"Erro ao salvar o arquivo {file_path}: {e}")
+
+
 def get_balancing_param_names(method):
     """Returns names of parameters specific to each balancing method"""
     param_map = {
-        'SMOTE': ['k_neighbors', 'sampling_strategy'],
-        'ADASYN': ['n_neighbors', 'sampling_strategy'],
-        'RandomUnderSampler': ['sampling_strategy'],
-        'SMOTEENN': ['smote_k_neighbors', 'enn_n_neighbors']
+        "SMOTE": ["k_neighbors", "sampling_strategy"],
+        "ADASYN": ["n_neighbors", "sampling_strategy"],
+        "RandomUnderSampler": ["sampling_strategy"],
+        "SMOTEENN": ["smote_k_neighbors", "enn_n_neighbors"],
     }
     return param_map.get(method, [])
+
 
 def get_feature_selection_param_names(method):
     """Returns parameter names specific to each feature selection method"""
     param_map = {
-        'SelectKBest': ['score_func', 'k'],
-        'RFE': ['n_features_to_select'],
-        'SelectFromModel': ['threshold']
+        "SelectKBest": ["score_func", "k"],
+        "RFE": ["n_features_to_select"],
+        "SelectFromModel": ["threshold"],
     }
     return param_map.get(method, [])

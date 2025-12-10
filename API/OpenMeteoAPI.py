@@ -1,18 +1,20 @@
-import openmeteo_requests
-import requests_cache
-import pandas as pd
-from retry_requests import retry
 import json
+
+import openmeteo_requests
+import pandas as pd
+import requests_cache
+from retry_requests import retry
+
 
 class OpenMeteoAPI:
     def __init__(self, start_date, end_date, timezone="America/Sao_Paulo"):
         self.start_date = start_date
         self.end_date = end_date
         self.timezone = timezone
-        self.path_to_save = './data/raw/base_1/'
+        self.path_to_save = "./data/raw/base_1/"
 
         # Setup the Open-Meteo API client with cache and retry on error
-        self.cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
+        self.cache_session = requests_cache.CachedSession(".cache", expire_after=3600)
         self.retry_session = retry(self.cache_session, retries=5, backoff_factor=0.2)
         self.openmeteo = openmeteo_requests.Client(session=self.retry_session)
 
@@ -20,12 +22,19 @@ class OpenMeteoAPI:
         self.params = {
             "hourly": ["relative_humidity_2m", "pressure_msl", "surface_pressure"],
             "daily": [
-                "temperature_2m_max", "temperature_2m_min", "temperature_2m_mean", "rain_sum", "showers_sum", 
-                "snowfall_sum", "wind_speed_10m_max", "wind_gusts_10m_max", "wind_direction_10m_dominant"
+                "temperature_2m_max",
+                "temperature_2m_min",
+                "temperature_2m_mean",
+                "rain_sum",
+                "showers_sum",
+                "snowfall_sum",
+                "wind_speed_10m_max",
+                "wind_gusts_10m_max",
+                "wind_direction_10m_dominant",
             ],
             "timezone": self.timezone,
             "start_date": self.start_date,
-            "end_date": self.end_date
+            "end_date": self.end_date,
         }
 
     def fetch_weather_data(self, latitude, longitude):
@@ -33,7 +42,9 @@ class OpenMeteoAPI:
         self.params["latitude"] = latitude
         self.params["longitude"] = longitude
         responses = self.openmeteo.weather_api(self.url, params=self.params)
-        return responses[0]  # Assuming we have only one response for the given coordinates
+        return responses[
+            0
+        ]  # Assuming we have only one response for the given coordinates
 
     def process_hourly_data(self, response):
         """Process hourly weather data."""
@@ -43,7 +54,7 @@ class OpenMeteoAPI:
                 start=pd.to_datetime(hourly.Time(), unit="s", utc=True),
                 end=pd.to_datetime(hourly.TimeEnd(), unit="s", utc=True),
                 freq=pd.Timedelta(seconds=hourly.Interval()),
-                inclusive="left"
+                inclusive="left",
             )
         }
         hourly_data["relative_humidity_2m"] = hourly.Variables(0).ValuesAsNumpy()
@@ -61,12 +72,12 @@ class OpenMeteoAPI:
                 start=pd.to_datetime(daily.Time(), unit="s", utc=True),
                 end=pd.to_datetime(daily.TimeEnd(), unit="s", utc=True),
                 freq=pd.Timedelta(seconds=daily.Interval()),
-                inclusive="left"
+                inclusive="left",
             )
         }
         daily_data["temperature_2m_max"] = daily.Variables(0).ValuesAsNumpy()
         daily_data["temperature_2m_min"] = daily.Variables(1).ValuesAsNumpy()
-        
+
         daily_data["temperature_2m_mean"] = daily.Variables(2).ValuesAsNumpy()
         daily_data["rain_sum"] = daily.Variables(3).ValuesAsNumpy()
         daily_data["showers_sum"] = daily.Variables(4).ValuesAsNumpy()
@@ -102,37 +113,42 @@ class OpenMeteoAPI:
         daily_df = pd.DataFrame(self.process_daily_data(response))
         print("Daily Data:")
         print(daily_df.head(5))
-        return daily_df,hourly_df
+        return daily_df, hourly_df
 
     def get_weather_data_for_all_cities(self, locations):
         """Fetch and display weather data for all cities in the provided dictionary."""
         for city, (latitude, longitude) in locations.items():
-            daily_df,hourly_df=self.get_weather_data_for_city(city, latitude, longitude)
-            self.save_data_frame_to_csv(daily_df,self.path_to_save,city,data_type="daily")
-            self.save_data_frame_to_csv(hourly_df,self.path_to_save,city,data_type="hourly")
-    def save_data_frame_to_csv(self,data_frame, file_path, city_name,data_type):
+            daily_df, hourly_df = self.get_weather_data_for_city(
+                city, latitude, longitude
+            )
+            self.save_data_frame_to_csv(
+                daily_df, self.path_to_save, city, data_type="daily"
+            )
+            self.save_data_frame_to_csv(
+                hourly_df, self.path_to_save, city, data_type="hourly"
+            )
+
+    def save_data_frame_to_csv(self, data_frame, file_path, city_name, data_type):
         """Save a pandas DataFrame to a CSV file with a personalized name based on city."""
         # Criação do nome do arquivo com base no city_name
         name_file = f"{file_path}{city_name}_{data_type}_1973_2024.csv"
-    
+
         # Salva o DataFrame com o nome do arquivo personalizado
         data_frame.to_csv(name_file, index=False)
 
 
-
 def load_locations_from_file(file_path):
     """Load cities and coordinates from a JSON file."""
-    with open(file_path, 'r') as file:
+    with open(file_path, "r") as file:
         data = json.load(file)
-        locations = {entry['city']: tuple(entry['coordinates']) for entry in data}
+        locations = {entry["city"]: tuple(entry["coordinates"]) for entry in data}
     return locations
-
 
 
 # Example usage:
 if __name__ == "__main__":
     # Load locations from the file
-    file_path = 'citys.json'  # Path to your JSON file with city data
+    file_path = "citys.json"  # Path to your JSON file with city data
     locations = load_locations_from_file(file_path)
     print(locations)
 

@@ -1,21 +1,22 @@
+import itertools
+import os
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
 import src.train.decision_tree as decision_tree
+import src.train.fase_2.decision_tree as decision_tree2
+import src.train.fase_2.lightgbm as lightgbm_model2
+import src.train.fase_2.xgboost as xgboost_model2
 import src.train.lightgbm_model as lightgbm_model
 import src.train.xgboost_model as xgboost_model
-import src.train.fase_2.decision_tree as decision_tree2
-import src.train.fase_2.xgboost as xgboost_model2
-import src.train.fase_2.lightgbm as lightgbm_model2
-import src.utils.Utils as utils  
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import OneHotEncoder
-import itertools
-import pandas as pd
-import os 
+import src.utils.Utils as utils
 
 # List of cities for each base
-cities_base_1 = ['albuquerque', 'miami', 'chicago']
-cities_base_2 = ['albuquerque', 'dallas', 'oklahoma city']
-cities_base_3 = ['albuquerque', 'nashville', 'chicago']
+cities_base_1 = ["albuquerque", "miami", "chicago"]
+cities_base_2 = ["albuquerque", "dallas", "oklahoma city"]
+cities_base_3 = ["albuquerque", "nashville", "chicago"]
 
 # Dictionaries to hold DataFrames for each base
 dataframe_base_1 = {}
@@ -24,34 +25,55 @@ dataframe_base_3 = {}
 
 # Dictionary to map bases to their respective cities
 base_to_cities = {
-    'base_1': cities_base_1,
-    'base_2': cities_base_2,
-    'base_3': cities_base_3,
+    "base_1": cities_base_1,
+    "base_2": cities_base_2,
+    "base_3": cities_base_3,
 }
-Balancing_Methods = [None,'SMOTE', 'ADASYN', 'RandomUnderSampler', 'SMOTEENN']
-Feature_Selection_Methods = [None,'SelectKBest', 'RFE', 'SelectFromModel']
-Order_feature_selection = [None,'before', 'after']
-#Feature_Selection_Methods = [None]
-#Order_feature_selection = [None]
-combinations = list(itertools.product(
-    Balancing_Methods,
-    Feature_Selection_Methods, 
-    Order_feature_selection))
+Balancing_Methods = [None, "SMOTE", "ADASYN", "RandomUnderSampler", "SMOTEENN"]
+Feature_Selection_Methods = [None, "SelectKBest", "RFE", "SelectFromModel"]
+Order_feature_selection = [None, "before", "after"]
+# Feature_Selection_Methods = [None]
+# Order_feature_selection = [None]
+combinations = list(
+    itertools.product(
+        Balancing_Methods, Feature_Selection_Methods, Order_feature_selection
+    )
+)
 
-def train_model(df,city,base):
-    X_train, X_test, y_train, y_test = train_test_split(df.drop(columns=['disaster_occurred']), df['disaster_occurred'], test_size=0.3, random_state=42,stratify=df['disaster_occurred'])
-    #print(f"X_train: {X_train.shape}, y_train: {y_train.shape}, X_test: {X_test.shape}, y_test: {y_test.shape}")
+
+def train_model(df, city, base):
+    X_train, X_test, y_train, y_test = train_test_split(
+        df.drop(columns=["disaster_occurred"]),
+        df["disaster_occurred"],
+        test_size=0.3,
+        random_state=42,
+        stratify=df["disaster_occurred"],
+    )
+    # print(f"X_train: {X_train.shape}, y_train: {y_train.shape}, X_test: {X_test.shape}, y_test: {y_test.shape}")
     print(f"base: {base}, city: {city}, column_target: {y_test.name}")
-    for balancing_method, feature_selection_method, order_feature_selection in combinations:
-        if base in ['base_2']:
+    for (
+        balancing_method,
+        feature_selection_method,
+        order_feature_selection,
+    ) in combinations:
+        if base in ["base_2"]:
             lightgbm_model2.train_lightgbm(
-            X_train, y_train, X_test, y_test, y_test.name,
-            base,city,balancing_method,feature_selection_method,
-            order_feature_selection,n_trials=30,fase=2)
-            
-        
-        #print(f"Trained Decision Tree for {city} in {base} with balancing method: {balancing_method}, feature selection method: {feature_selection_method}, order: {order_feature_selection}")
-        '''
+                X_train,
+                y_train,
+                X_test,
+                y_test,
+                y_test.name,
+                base,
+                city,
+                balancing_method,
+                feature_selection_method,
+                order_feature_selection,
+                n_trials=30,
+                fase=2,
+            )
+
+        # print(f"Trained Decision Tree for {city} in {base} with balancing method: {balancing_method}, feature selection method: {feature_selection_method}, order: {order_feature_selection}")
+        """
         decision_tree2.train_decision_tree(
             X_train, y_train, X_test, y_test,y_test.name,
             base,city,balancing_method,feature_selection_method,
@@ -71,16 +93,16 @@ def train_model(df,city,base):
         xgboost_model.train_xgboost(
             X_train, y_train, X_test, y_test, y_test.name,
             base,city,balancing_method,feature_selection_method,
-            order_feature_selection,n_trials=200)'''
+            order_feature_selection,n_trials=200)"""
     print("Success in training models")
-    '''
+    """
     for method in Balancing_Methods:
         for feature_selection_method in Feature_Selection_Methods:
             for order in order_feature_selection:
-                decision_tree.train_decision_tree(X_train, y_train, X_test, y_test,y_test.name,base,city,method,feature_selection_method, order)'''
-        #lightgbm_model.train_lightgbm(X_train, y_train, X_test, y_test, y_test.name,base,city,method)
-        #xgboost_model.train_xgboost(X_train, y_train, X_test, y_test, y_test.name,base,city,method)
-    
+                decision_tree.train_decision_tree(X_train, y_train, X_test, y_test,y_test.name,base,city,method,feature_selection_method, order)"""
+    # lightgbm_model.train_lightgbm(X_train, y_train, X_test, y_test, y_test.name,base,city,method)
+    # xgboost_model.train_xgboost(X_train, y_train, X_test, y_test, y_test.name,base,city,method)
+
 
 def load_data_for_base(file_path, city, base, dataframe_dict):
     """Função que carrega o DataFrame para a base correspondente."""
@@ -88,66 +110,69 @@ def load_data_for_base(file_path, city, base, dataframe_dict):
         df = utils.read_data_from_parquet(file_path)
         dataframe_dict[city] = df
         print(f"DataFrame para cidade {city} carregado na {base}.")
+
+
 def preprocess_dataframe(df):
     scaler = StandardScaler()
-    encoder = OneHotEncoder(sparse_output=False) 
+    encoder = OneHotEncoder(sparse_output=False)
 
-    cols_to_exclude = ['date', 'season', 'eventType', 'disaster_occurred']
+    cols_to_exclude = ["date", "season", "eventType", "disaster_occurred"]
     cols_to_scale = [col for col in df.columns if col not in cols_to_exclude]
 
-    season_encoded = encoder.fit_transform(df[['season']])
+    season_encoded = encoder.fit_transform(df[["season"]])
     df_scaled_values = scaler.fit_transform(df[cols_to_scale])
-    
+
     df_scaled = pd.DataFrame(df_scaled_values, columns=cols_to_scale, index=df.index)
-    season_encoded_df = pd.DataFrame(season_encoded, columns=encoder.get_feature_names_out(['season']), index=df.index)
+    season_encoded_df = pd.DataFrame(
+        season_encoded,
+        columns=encoder.get_feature_names_out(["season"]),
+        index=df.index,
+    )
 
     df_final = pd.concat([df[cols_to_exclude], df_scaled, season_encoded_df], axis=1)
-    df_final = utils.extract_date_components(df_final, 'date')
-    df_final = df_final.drop(columns=['date', 'eventType', 'season'])
+    df_final = utils.extract_date_components(df_final, "date")
+    df_final = df_final.drop(columns=["date", "eventType", "season"])
 
     return df_final
 
 
 if __name__ == "__main__":
-    gold_data_path = 'data/gold'
-    
+    gold_data_path = "data/gold"
+
     for dir in os.listdir(gold_data_path):
         file_dir = os.path.join(gold_data_path, dir)
-        print(f'Analisando diretório: {file_dir} ...\n')
-        
+        print(f"Analisando diretório: {file_dir} ...\n")
+
         for paths in os.listdir(file_dir):
             file_path = os.path.join(file_dir, paths)
-            city = paths.split('_')[0]
-            print(f'Analisando cidade: {city} ...')
-            print(f'Arquivo: {paths} ... \n')
+            city = paths.split("_")[0]
+            print(f"Analisando cidade: {city} ...")
+            print(f"Arquivo: {paths} ... \n")
 
             match dir:
-                case 'base_1':
-                    load_data_for_base(file_path, city, 'base_1', dataframe_base_1)
-                case 'base_2':
-                    load_data_for_base(file_path, city, 'base_2', dataframe_base_2)
-                case 'base_3':
-                    load_data_for_base(file_path, city, 'base_3', dataframe_base_3)
+                case "base_1":
+                    load_data_for_base(file_path, city, "base_1", dataframe_base_1)
+                case "base_2":
+                    load_data_for_base(file_path, city, "base_2", dataframe_base_2)
+                case "base_3":
+                    load_data_for_base(file_path, city, "base_3", dataframe_base_3)
                 case _:
                     pass
 
-        print("-----/-----/"*10)
-    '''
+        print("-----/-----/" * 10)
+    """
     print(f"DataFrames para a base 1: {len(dataframe_base_1)}")
     print(f"DataFrames para a base 2: {len(dataframe_base_2)}")
     print(f"DataFrames para a base 3: {len(dataframe_base_3)}")
     print(f'Chaves em dataframe_base_1: {list(dataframe_base_1.keys())}')
     print(f'Chaves em dataframe_base_2: {list(dataframe_base_2.keys())}')
-    print(f'Chaves em dataframe_base_3: {list(dataframe_base_3.keys())}')'''
+    print(f'Chaves em dataframe_base_3: {list(dataframe_base_3.keys())}')"""
     list_dataframes = [dataframe_base_1, dataframe_base_2, dataframe_base_3]
-    
-    for base_name, dataframe_dict in zip(['base_1', 'base_2', 'base_3'], list_dataframes):
+
+    for base_name, dataframe_dict in zip(
+        ["base_1", "base_2", "base_3"], list_dataframes
+    ):
         for city, df in dataframe_dict.items():
-            print(f'Treinando modelos para {city} na {base_name}...')
+            print(f"Treinando modelos para {city} na {base_name}...")
             df_final = preprocess_dataframe(df)
             train_model(df_final, city, base_name)
-
-
-
-
-    

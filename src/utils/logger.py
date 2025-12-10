@@ -1,8 +1,12 @@
 import logging.config
-import yaml
 import os
 
-def setup_logger(name="default", config_path="configs/logging_config.yml") -> logging.Logger:
+import yaml
+
+
+def setup_logger(
+    name="default", config_path="configs/logging_config.yml"
+) -> logging.Logger:
     """
     Configura e retorna um logger com base no arquivo YAML.
 

@@ -1,12 +1,16 @@
 import sys
 from pathlib import Path
+
 # Ajuste o sys.path ANTES de qualquer outro import
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
-import pytest
-import pandas as pd
 import json
+
+import pandas as pd
+import pytest
+
 from src.data_transform.bronze_processor import BronzeProcessor
+
 
 @pytest.fixture
 def sample_csv(tmp_path):
@@ -15,6 +19,7 @@ def sample_csv(tmp_path):
     df = pd.DataFrame({"col1": [1, 2], "col2": ["a", "b"]})
     df.to_csv(csv_path, index=False)
     return csv_path
+
 
 @pytest.fixture
 def sample_mapping(tmp_path):
@@ -25,15 +30,18 @@ def sample_mapping(tmp_path):
         json.dump(mapping, f)
     return mapping_path
 
+
 def test_load_mapping(sample_mapping):
     processor = BronzeProcessor("dummy", "dummy", sample_mapping)
     assert "city1" in processor.mapping
+
 
 def test_read_csv_file(sample_csv, sample_mapping, tmp_path):
     processor = BronzeProcessor(tmp_path, tmp_path, sample_mapping)
     df = processor.read_csv_file(sample_csv)
     assert isinstance(df, pd.DataFrame)
     assert df.shape == (2, 2)
+
 
 def test_add_metadata(sample_csv, sample_mapping, tmp_path):
     processor = BronzeProcessor(tmp_path, tmp_path, sample_mapping)
@@ -43,6 +51,7 @@ def test_add_metadata(sample_csv, sample_mapping, tmp_path):
     assert "_bronze_ingestion_timestamp" in df_meta.columns
     assert "_source_file" in df_meta.columns
 
+
 def test_save_to_parquet(sample_csv, sample_mapping, tmp_path):
     processor = BronzeProcessor(tmp_path, tmp_path, sample_mapping)
     df = pd.read_csv(sample_csv)
@@ -50,6 +59,7 @@ def test_save_to_parquet(sample_csv, sample_mapping, tmp_path):
     result = processor.save_to_parquet(df, output_path)
     assert result is True
     assert output_path.exists()
+
 
 def test_process_single_file(sample_csv, sample_mapping, tmp_path):
     # Simula estrutura de base/cidade

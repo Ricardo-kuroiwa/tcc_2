@@ -1,8 +1,10 @@
 import os
 import time
-import pandas as pd
-from pathlib import Path
 from collections import defaultdict
+from pathlib import Path
+
+import pandas as pd
+
 import src.utils.Utils as utils
 from src.utils.logger import setup_logger
 
@@ -20,8 +22,14 @@ class GoldProcessor:
         self.gold_path = Path(gold_path)
         self.silver_path_disaster = self.silver_path / "base_disaster"
         self.cities = [
-            'dallas', 'houston', 'miami', 'nashville',
-            'new york', 'oklahoma city', 'albuquerque', 'chicago'
+            "dallas",
+            "houston",
+            "miami",
+            "nashville",
+            "new york",
+            "oklahoma city",
+            "albuquerque",
+            "chicago",
         ]
 
     def get_disaster_file_for_city(self, city_name: str) -> Path:
@@ -45,11 +53,13 @@ class GoldProcessor:
                 df_hourly = utils.read_data_from_parquet(file_path)
                 logger.info(f"Leitura de arquivo horário: {file}")
 
-        df_disaster = utils.read_data_from_parquet(disaster_file).drop(columns=['location'], errors='ignore')
+        df_disaster = utils.read_data_from_parquet(disaster_file).drop(
+            columns=["location"], errors="ignore"
+        )
 
-        df_daily['season'] = df_daily['date'].apply(utils.get_season)
-        medias_por_dia = df_hourly.groupby('date').mean(numeric_only=True).reset_index()
-        df_base = pd.merge(df_daily, medias_por_dia, on='date', how='left')
+        df_daily["season"] = df_daily["date"].apply(utils.get_season)
+        medias_por_dia = df_hourly.groupby("date").mean(numeric_only=True).reset_index()
+        df_base = pd.merge(df_daily, medias_por_dia, on="date", how="left")
         df_final = self.merge_with_disasters(df_base, df_disaster)
         return df_final
 
@@ -57,8 +67,10 @@ class GoldProcessor:
         """Processamento da base 2 (apenas diário)."""
         file_path = self.silver_path / base_name / city_files[0]
         df = utils.read_data_from_parquet(file_path)
-        df['season'] = df['date'].apply(utils.get_season)
-        df_disaster = utils.read_data_from_parquet(disaster_file).drop(columns=['location'], errors='ignore')
+        df["season"] = df["date"].apply(utils.get_season)
+        df_disaster = utils.read_data_from_parquet(disaster_file).drop(
+            columns=["location"], errors="ignore"
+        )
         df_final = self.merge_with_disasters(df, df_disaster)
         return df_final
 
@@ -73,32 +85,57 @@ class GoldProcessor:
             elif "hourly" in file:
                 df_hourly = utils.read_data_from_parquet(file_path)
 
-        df_disaster = utils.read_data_from_parquet(disaster_file).drop(columns=['location'], errors='ignore')
+        df_disaster = utils.read_data_from_parquet(disaster_file).drop(
+            columns=["location"], errors="ignore"
+        )
 
         # Agregações de dados horários
-        medias_por_dia = df_hourly.groupby('date').mean(numeric_only=True).reset_index()
-        medias_por_dia = medias_por_dia[['date', 'dewpoint', 'relative_humidity', 'wind_direction', 'wind_speed', 'precipitation']]
+        medias_por_dia = df_hourly.groupby("date").mean(numeric_only=True).reset_index()
+        medias_por_dia = medias_por_dia[
+            [
+                "date",
+                "dewpoint",
+                "relative_humidity",
+                "wind_direction",
+                "wind_speed",
+                "precipitation",
+            ]
+        ]
 
-        merge_cols = ['precipitation', 'wind_direction', 'wind_speed']
-        df_merged = pd.merge(df_daily, medias_por_dia, on=merge_cols, how='left', suffixes=('_daily', '_agg'))
+        merge_cols = ["precipitation", "wind_direction", "wind_speed"]
+        df_merged = pd.merge(
+            df_daily,
+            medias_por_dia,
+            on=merge_cols,
+            how="left",
+            suffixes=("_daily", "_agg"),
+        )
 
         for col in merge_cols:
             df_daily[col] = df_daily[col].fillna(df_merged[col])
 
-        df_daily.drop(columns=['total_sunshine_duration', 'wind_gust'], errors='ignore', inplace=True)
-        medias_por_dia.drop(columns=merge_cols, inplace=True, errors='ignore')
+        df_daily.drop(
+            columns=["total_sunshine_duration", "wind_gust"],
+            errors="ignore",
+            inplace=True,
+        )
+        medias_por_dia.drop(columns=merge_cols, inplace=True, errors="ignore")
 
-        df_base = pd.merge(df_daily, medias_por_dia, on='date', how='left')
+        df_base = pd.merge(df_daily, medias_por_dia, on="date", how="left")
         df_base = self.interpolate_missing_values(df_base)
 
-        df_base['season'] = df_base['date'].apply(utils.get_season)
+        df_base["season"] = df_base["date"].apply(utils.get_season)
         df_final = self.merge_with_disasters(df_base, df_disaster)
         return df_final
 
-    def merge_with_disasters(self, df: pd.DataFrame, df_disaster: pd.DataFrame) -> pd.DataFrame:
+    def merge_with_disasters(
+        self, df: pd.DataFrame, df_disaster: pd.DataFrame
+    ) -> pd.DataFrame:
         """Une base com dataset de desastres e define coluna 'disaster_occurred'."""
-        result_df = pd.merge(df, df_disaster, on='date', how='outer')
-        result_df['disaster_occurred'] = result_df['eventType'].apply(lambda x: 0 if pd.isna(x) else 1)
+        result_df = pd.merge(df, df_disaster, on="date", how="outer")
+        result_df["disaster_occurred"] = result_df["eventType"].apply(
+            lambda x: 0 if pd.isna(x) else 1
+        )
         return result_df
 
     def interpolate_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -111,10 +148,11 @@ class GoldProcessor:
 
     def get_processor(self, base_name: str):
         return {
-            'base_1': self.process_base_1,
-            'base_2': self.process_base_2,
-            'base_3': self.process_base_3,
+            "base_1": self.process_base_1,
+            "base_2": self.process_base_2,
+            "base_3": self.process_base_3,
         }.get(base_name, lambda *args: pd.DataFrame())
+
     def _analyze_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
         """Analisa e retorna um DataFrame com porcentagem de valores nulos por coluna."""
         null_counts = df.isnull().sum()
@@ -160,6 +198,8 @@ class GoldProcessor:
                     logger.warning(f" Dados de saída vazios para {city} ({base_name})")
 
         logger.info(" Gold Layer concluída.")
+
+
 def main():
     silver_path = "data/silver"
     gold_path = "data/gold"
@@ -168,7 +208,9 @@ def main():
 
     start = time.time()
     processor.process_all()
-    end = time.time()   
+    end = time.time()
     logger.info(f"\nTempo total: {end - start:.2f} segundos")
+
+
 if __name__ == "__main__":
     main()

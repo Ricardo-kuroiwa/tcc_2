@@ -1,0 +1,12 @@
+paths:
+  raw_data: data/raw
+  bronze_data: data/bronze
+  silver_data: data/silver
+  gold_data: data/gold
+mlflow:
+  tracking_uri: ${MLFLOW_TRACKING_URI}
+  experiment: medalion_pipeline
+training:
+  seed: 42
+  test_size: 0.3
+  n_trials: 50

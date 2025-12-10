@@ -1,10 +1,13 @@
-import mlflow
-from mlflow.tracking import MlflowClient
-import pandas as pd
-import src.utils.Utils as utils
 import json
 
-def get_data_experiment(experiment_name:str) -> pd.DataFrame:
+import mlflow
+import pandas as pd
+from mlflow.tracking import MlflowClient
+
+import src.utils.Utils as utils
+
+
+def get_data_experiment(experiment_name: str) -> pd.DataFrame:
     """
     Função para buscar dados de um experimento específico no MLflow.
     Parans:
@@ -28,7 +31,9 @@ def get_data_experiment(experiment_name:str) -> pd.DataFrame:
             "run_id": run.info.run_id,
             "status": run.info.status,
             "run_name": run.data.tags.get("mlflow.runName", "Unnamed Run"),
-            "model_name":json.loads( run.data.tags.get("mlflow.log-model.history"))[0]['artifact_path'],
+            "model_name": json.loads(run.data.tags.get("mlflow.log-model.history"))[0][
+                "artifact_path"
+            ],
         }
         data.update(run.data.params)
         data.update(run.data.metrics)
@@ -36,9 +41,10 @@ def get_data_experiment(experiment_name:str) -> pd.DataFrame:
     df = pd.DataFrame(runs_data)
     return df
 
+
 if __name__ == "__main__":
     # Get data from experiment
-    names_experiments = ['DataBase_base_1', 'DataBase_base_2', 'DataBase_base_3']
+    names_experiments = ["DataBase_base_1", "DataBase_base_2", "DataBase_base_3"]
     for name in names_experiments:
         df = get_data_experiment(name)
         print(f"Dados do experimento '{name}':")
